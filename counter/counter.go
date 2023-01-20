@@ -27,12 +27,7 @@ func CLI(args []string) int {
 
 // appEnv represents parsed command line arguments
 type appEnv struct {
-	word       string
-	total      int
-	l          sync.RWMutex
-	wg         sync.WaitGroup
-	reader     io.ReadCloser
-	workersNum int
+	mu              sync.RWMutex
 }
 
 // fromArgs parses command line arguments into appEnv struct
@@ -99,9 +94,9 @@ func (app *appEnv) countWords(url string, limit chan struct{}) {
 	}
 	fmt.Printf("Count for %s: %d\n", url, total)
 
-	app.l.Lock()
+	app.mu.Lock()
 	app.total += total
-	app.l.Unlock()
+	app.mu.Unlock()
 
 	<-limit
 }
