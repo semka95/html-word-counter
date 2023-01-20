@@ -2,12 +2,12 @@ package counter
 
 import (
 	"bufio"
-	"bytes"
 	"flag"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 )
 
@@ -27,7 +27,13 @@ func CLI(args []string) int {
 
 // appEnv represents parsed command line arguments
 type appEnv struct {
+	word            string
+	total           int
 	mu              sync.RWMutex
+	wg              sync.WaitGroup
+	reader          io.ReadCloser
+	workersNum      int
+	isCaseSensetive bool
 }
 
 // fromArgs parses command line arguments into appEnv struct
@@ -35,9 +41,15 @@ func (app *appEnv) fromArgs(args []string) error {
 	fl := flag.NewFlagSet("counter", flag.ContinueOnError)
 	fl.StringVar(&app.word, "w", "go", "word to count")
 	fl.IntVar(&app.workersNum, "n", 5, "max number of concurrent workers")
+	fl.BoolVar(&app.isCaseSensetive, "c", false, "is case sensetive count")
 
 	if err := fl.Parse(args); err != nil {
 		return err
+	}
+
+	if !app.isCaseSensetive {
+		app.word = strings.ToLower(app.word)
+		fmt.Println(app.word)
 	}
 
 	stat, _ := os.Stdin.Stat()
@@ -88,8 +100,11 @@ func (app *appEnv) countWords(url string, limit chan struct{}) {
 
 	scanner := bufio.NewScanner(resp.Body)
 	for scanner.Scan() {
-		scanner.Bytes()
-		total += bytes.Count(scanner.Bytes(), []byte(app.word))
+		if !app.isCaseSensetive {
+			total += strings.Count(strings.ToLower(scanner.Text()), app.word)
+			continue
+		}
+		total += strings.Count(scanner.Text(), app.word)
 	}
 	fmt.Printf("Count for %s: %d\n", url, total)
 
