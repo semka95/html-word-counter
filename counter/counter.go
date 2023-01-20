@@ -37,7 +37,6 @@ func (app *appEnv) fromArgs(args []string) error {
 	fl.IntVar(&app.workersNum, "n", 5, "max number of concurrent workers")
 
 	if err := fl.Parse(args); err != nil {
-		fl.Usage()
 		return err
 	}
 
