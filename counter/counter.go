@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 )
 
 // CLI runs the go-counter command line app and returns its exit status.
@@ -28,8 +29,7 @@ func CLI(args []string) int {
 // appEnv represents parsed command line arguments
 type appEnv struct {
 	word            string
-	total           int
-	mu              sync.RWMutex
+	total           atomic.Uint32
 	wg              sync.WaitGroup
 	reader          io.ReadCloser
 	workersNum      int
@@ -49,7 +49,6 @@ func (app *appEnv) fromArgs(args []string) error {
 
 	if !app.isCaseSensetive {
 		app.word = strings.ToLower(app.word)
-		fmt.Println(app.word)
 	}
 
 	stat, _ := os.Stdin.Stat()
@@ -79,7 +78,7 @@ func (app *appEnv) run() error {
 	}
 
 	app.wg.Wait()
-	fmt.Printf("Total: %d\n", app.total)
+	fmt.Printf("Total: %d\n", app.total.Load())
 
 	return nil
 }
@@ -108,9 +107,7 @@ func (app *appEnv) countWords(url string, limit chan struct{}) {
 	}
 	fmt.Printf("Count for %s: %d\n", url, total)
 
-	app.mu.Lock()
-	app.total += total
-	app.mu.Unlock()
+	app.total.Add(uint32(total))
 
 	<-limit
 }
